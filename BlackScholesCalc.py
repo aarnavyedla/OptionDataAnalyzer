@@ -22,7 +22,7 @@ def main():
     time = 40/365
     vol = 0.32
     print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))
-    st.title('Uber pickups in NYC')
+    #st.title('Uber pickups in NYC')
 
 if __name__=="__main__":
     main()
