@@ -16,13 +16,25 @@ def PutBlackCalc(s,x,r,t,v):
     return pprice
 
 def main():
-    stock = 40
+    '''stock = 40
     strike = 50
     interest = 0.04
     time = 40/365
     vol = 0.32
-    print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))
-    st.title('Uber pickups in NYC')
+    print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))'''
+    st.title('Black Scholes Price Calculator')
+    st.text_input("Strike price", key="strike")
+    st.text_input("Current asset price", key="stock")
+    st.text_input("Risk free interest rate", key="interest")
+    st.text_input("Time till expiry", key="time")
+    st.text_input("Volatility", key="vol")
+    st.write('The call price is: ' + str(
+        CallBlackCalc(st.session_state.strike, st.session_state.stock, st.session_state.interest, st.session_state.time,
+                      st.session_state.vol)))
+    st.write('The put price is: ' + str(
+        PutBlackCalc(st.session_state.strike, st.session_state.stock, st.session_state.interest, st.session_state.time,
+                      st.session_state.vol)))
+
 
 if __name__=="__main__":
     main()
