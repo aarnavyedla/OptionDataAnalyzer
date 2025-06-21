@@ -29,11 +29,13 @@ def main():
     st.text_input("Time till expiry", key="time")
     st.text_input("Volatility", key="vol")
     st.write('The call price is: ' + str(
-        CallBlackCalc(st.session_state.strike, st.session_state.stock, st.session_state.interest, st.session_state.time,
-                      st.session_state.vol)))
+        CallBlackCalc(int(st.session_state.strike), int(st.session_state.stock), int(st.session_state.interest),
+                      int(st.session_state.time),
+                      int(st.session_state.vol))))
     st.write('The put price is: ' + str(
-        PutBlackCalc(st.session_state.strike, st.session_state.stock, st.session_state.interest, st.session_state.time,
-                      st.session_state.vol)))
+        PutBlackCalc(int(st.session_state.strike), int(st.session_state.stock), int(st.session_state.interest),
+                      int(st.session_state.time),
+                      int(st.session_state.vol))))
 
 
 if __name__=="__main__":
