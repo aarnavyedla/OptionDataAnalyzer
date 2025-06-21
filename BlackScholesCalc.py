@@ -30,8 +30,8 @@ def main():
     time = st.number_input("Days till expiry", key="time")/365
     vol = st.number_input("Volatility", key="vol")
     if strike != 0 and stock != 0 and interest != 0 and time != 0 and vol != 0:
-        st.write('The call price is: $' + str(round(CallBlackCalc(stock, strike, interest, time, vol),2)))
-        st.write('The put price is: $' + str(round(PutBlackCalc(stock, strike, interest, time, vol),2)))
+        st.write('The call price is: $' + str(f'{round(CallBlackCalc(stock, strike, interest, time, vol),2):2f}'))
+        st.write('The put price is: $' + str(f'{round(CallBlackCalc(stock, strike, interest, time, vol),2):2f}'))
 
 
 if __name__=="__main__":
