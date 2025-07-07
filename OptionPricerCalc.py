@@ -60,7 +60,7 @@ def MonteCarloPut(s,x,r,t,v,n,m):
     pvstrike = x*np.exp(-r*t)
     put = call+pvstrike-s
 
-    return "{:20,.2f}".format(put)
+    return "{:20,.2f}".format(put).strip()
 
 def main():
     '''
@@ -70,19 +70,30 @@ def main():
     time = 40/365
     vol = 0.32
     print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))'''
-    st.title('Black Scholes Price Calculator')
-    stock = st.number_input("Current asset price", key="stock")
-    strike = st.number_input("Strike price", key="strike")
-    interest = st.number_input("Risk free interest rate (%)", key="interest")/100
-    time = st.number_input("Days till expiry", key="time")/365
-    vol = st.number_input("Volatility", key="vol")
+
+
+    st.title('Option Price Calculator')
+
+
+
+    with st.sidebar:
+        stock = st.number_input("Current asset price", key="stock")
+        strike = st.number_input("Strike price", key="strike")
+        interest = st.number_input("Risk free interest rate (%)", key="interest")/100
+        time = st.number_input("Days till expiry", key="time")/365
+        vol = st.number_input("Volatility", key="vol")
+
+        option = st.selectbox("What pricing model would you like to use?", ("Black Scholes", "Monte Carlo"), index = None, placeholder = "Choose pricing model")
+
 
     if strike != 0 and stock != 0 and interest != 0 and time != 0 and vol != 0:
-        st.write('The Black Scholes call price is: $' + CallBlackCalc(stock, strike, interest, time, vol))
-        st.write('The Black Scholes put price is: $' + PutBlackCalc(stock, strike, interest, time, vol))
-        st.write("The Monte Carlo call price is: $" + MonteCarloCall(stock, strike, interest, time, vol, 10, 1000, True)[0])
-        st.write("The Monte Carlo put price is: $" + MonteCarloPut(stock, strike, interest, time, vol, 10, 1000))
-        st.write("The Monte Carlo standard deviation is: +/-" + MonteCarloCall(stock, strike, interest, time, vol, 10, 1000, False)[1])
+       if option == "Black Scholes":
+            st.write('The Black Scholes call price is: $' + CallBlackCalc(stock, strike, interest, time, vol))
+            st.write('The Black Scholes put price is: $' + PutBlackCalc(stock, strike, interest, time, vol))
+       if option == "Monte Carlo":
+            st.write("The Monte Carlo call price is: $" + MonteCarloCall(stock, strike, interest, time, vol, 10, 1000, True)[0])
+            st.write("The Monte Carlo put price is: $" + MonteCarloPut(stock, strike, interest, time, vol, 10, 1000))
+            st.write("The Monte Carlo standard deviation is: +/-" + MonteCarloCall(stock, strike, interest, time, vol, 10, 1000, False)[1])
 
 
 if __name__=="__main__":
