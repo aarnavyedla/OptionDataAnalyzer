@@ -7,6 +7,7 @@ from scipy.stats import norm
 import yfinance as yf
 import datetime
 import pymysql
+import tempfile
 
 def CallBlackCalc(s,x,r,t,v):
     d1 = (np.log(s/x)+t*(r+v**2/2))/(v*np.sqrt(t))
@@ -135,6 +136,11 @@ def writeoptionprice(stockticker, date):
     return 
 '''
 
+def get_ca_file():
+    ca_text = st.secrets["tidb"]["SSL_CA"]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as f:
+        f.write(ca_text.encode())
+        return f.name
 
 def reducewhitespace():
     st.markdown(
@@ -169,7 +175,7 @@ def main():
 
 
     st.title('Option Data Collection')
-    st.write(st.secrets['tidb']['DB_HOST'])
+    st.write(get_ca_file())
 
     reducewhitespace()
 
