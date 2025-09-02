@@ -74,7 +74,67 @@ def putfromcall(call, s, x, r, t):
     return "{:20,.2f}".format(put).strip()
 
 def getpossibleexpiry(ticker):
-    return yf.Ticker(ticker).options
+    return list(yf.Ticker(ticker).options)
+a='''
+def writeoptionprice(stockticker, date):
+    conn = pymysql.connect(**db_config)
+    ticker = yf.Ticker(stockticker)
+    opt_chain = ticker.option_chain(date)
+    
+    calls = opt_chain.calls
+
+    for i, row in calls.iterrows():
+        stock = float(ticker.history(start=row["lastTradeDate"], period="1m")["Close"].iloc[0])
+        strike = float(row["strike"])
+        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1m")["Close"] / 100).iloc[0])
+        time = int((datetime.datetime.strptime("2025-09-05", "%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) // 86400 + ((datetime.datetime.strptime("2025-09-05","%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) % 86400 > 0)) / 365
+        volatility = row["impliedVolatility"]
+
+        calldata = {
+            "tickerid": str(row['contractSymbol']),
+            "company": stockticker,
+            "date": date,
+            "is_call": True,
+            "actprice": float(row['lastPrice']),
+            "bsprice": float(CallBlackCalc(stock, strike, interest, time, volatility)),
+            "mcprice": float(MonteCarloCall(stock, strike, interest, time, volatility, 10, 100000, False)[0])
+        }
+
+        if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
+            with conn.cursor() as cursor:
+                sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                cursor.execute(sql, (calldata['tickerid'], calldata['company'], calldata['date'], calldata['is_call'],
+                                     calldata['actprice'], calldata['bsprice'], calldata['mcprice']))
+            conn.commit()
+
+    puts = opt_chain.puts
+    for i, row in puts.iterrows():
+        stock = float(ticker.history(start=row["lastTradeDate"], period="1m")["Close"].iloc[0])
+        strike = float(row["strike"])
+        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1m")["Close"] / 100).iloc[0])
+        time = int((datetime.datetime.strptime("2025-09-05", "%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) // 86400 + ((datetime.datetime.strptime("2025-09-05","%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) % 86400 > 0)) / 365
+        volatility = row["impliedVolatility"]
+
+        putdata = {
+            "tickerid": str(row['contractSymbol']),
+            "company": stockticker,
+            "date": date,
+            "is_call": False,
+            "actprice": float(row['lastPrice']),
+            "bsprice": float(PutBlackCalc(stock, strike, interest, time, volatility)),
+            "mcprice": float(MonteCarloPut(stock, strike, interest, time, volatility, 10, 100000))
+        }
+
+        if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
+            with conn.cursor() as cursor:
+                sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                cursor.execute(sql, (putdata['tickerid'], putdata['company'], putdata['date'], putdata['is_call'],
+                                     putdata['actprice'], putdata['bsprice'], putdata['mcprice']))
+            conn.commit()
+    conn.close()
+    return 
+'''
+
 
 def reducewhitespace():
     st.markdown(
@@ -109,6 +169,7 @@ def main():
 
 
     st.title('Option Data Collection')
+    st.write(st.secrets['tidb']['DB_HOST'])
 
     reducewhitespace()
 
@@ -142,6 +203,13 @@ def main():
                     st.write("The Monte Carlo put price is: $" + putfromcall(float(mcdata[0]), stock, strike, interest, time))
                 st.write("With 10 steps and 1000 simulations, the standard deviation is: +/-" + mcdata[1])
                 st.pyplot(mcdata[2])
+
+    ticker = st.text_input("Ticker (if no dates are showing up, check your spelling): ")
+    if ticker:
+        expiryoptions = getpossibleexpiry(ticker)
+        if expiryoptions:
+            expiryoptions.insert(0, 'No date selected')
+            expiry = st.selectbox('Please select an expiry date', expiryoptions)
 
 
 if __name__=="__main__":
