@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 from scipy.stats import norm
+import yfinance as yf
+import datetime
+import pymysql
 
 def CallBlackCalc(s,x,r,t,v):
     d1 = (np.log(s/x)+t*(r+v**2/2))/(v*np.sqrt(t))
