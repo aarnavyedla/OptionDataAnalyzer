@@ -8,6 +8,7 @@ import yfinance as yf
 import datetime
 import pymysql
 import tempfile
+import warnings
 
 def CallBlackCalc(s,x,r,t,v):
     d1 = (np.log(s/x)+t*(r+v**2/2))/(v*np.sqrt(t))
@@ -85,7 +86,6 @@ def writeoptionprice(stockticker, date):
     calls = opt_chain.calls
 
     for i, row in calls.iterrows():
-        #st.write(ticker.history(start=row["lastTradeDate"], period="1m")["Close"])
         stock = float(ticker.history(start=row["lastTradeDate"], period="1d")["Close"].iloc[0])
         strike = float(row["strike"])
         interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1d")["Close"] / 100).iloc[0])
@@ -105,7 +105,7 @@ def writeoptionprice(stockticker, date):
         if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
             with conn.cursor() as cursor:
                 sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-                cursor.execute(sql, (calldata['tickerid'], calldata['company'], calldata['date'], calldata['is_call'],
+                cursor.execute(sql, (calldata['tickerid'], calldata['company'].upper(), calldata['date'], calldata['is_call'],
                                      calldata['actprice'], calldata['bsprice'], calldata['mcprice']))
             conn.commit()
 
@@ -130,11 +130,34 @@ def writeoptionprice(stockticker, date):
         if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
             with conn.cursor() as cursor:
                 sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-                cursor.execute(sql, (putdata['tickerid'], putdata['company'], putdata['date'], putdata['is_call'],
+                cursor.execute(sql, (putdata['tickerid'], putdata['company'].upper(), putdata['date'], putdata['is_call'],
                                      putdata['actprice'], putdata['bsprice'], putdata['mcprice']))
             conn.commit()
     conn.close()
     return
+
+def getwrittencompanies():
+    conn = pymysql.connect(**db_config)
+    query = 'SELECT DISTINCT company FROM option_pricer_data'
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
+
+def getwrittencompanydates(stockticker):
+    ticker = stockticker.upper()
+    conn = pymysql.connect(**db_config)
+    query = 'SELECT DISTINCT date FROM option_pricer_data WHERE company=%s'
+    df = pd.read_sql(query, conn, params = [ticker])
+    conn.close()
+    return df
+
+def getoptiondata(stockticker, date):
+    ticker = stockticker.upper()
+    conn = pymysql.connect(**db_config)
+    query = 'SELECT * FROM option_pricer_data WHERE company=%s AND date=%s'
+    df = pd.read_sql(query, conn, params = [ticker, date])
+    conn.close()
+    return df
 
 def get_ca_file():
     ca_text = st.secrets["tidb"]["SSL_CA"]
@@ -188,7 +211,7 @@ def main():
 
 
     st.title('Option Data Collection')
-
+    warnings.filterwarnings("ignore", category=UserWarning)
     reducewhitespace()
 
     with st.sidebar:
@@ -208,12 +231,12 @@ def main():
 
 
         if strike != 0 and stock != 0 and interest != 0 and time != 0 and vol != 0:
-           if option == "Black Scholes":
+            if option == "Black Scholes":
                 with col1:
                     st.write('The Black Scholes call price is: $' + CallBlackCalc(stock, strike, interest, time, vol))
                 with col2:
                     st.write('The Black Scholes put price is: $' + PutBlackCalc(stock, strike, interest, time, vol))
-           if option == "Monte Carlo":
+            if option == "Monte Carlo":
                 mcdata =  MonteCarloCall(stock, strike, interest, time, vol, 10, 1000, True)
                 with col1:
                     st.write("The Monte Carlo call price is: $" + mcdata[0])
@@ -222,15 +245,27 @@ def main():
                 st.write("With 10 steps and 1000 simulations, the standard deviation is: +/-" + mcdata[1])
                 st.pyplot(mcdata[2])
 
-    ticker = st.text_input("Ticker (if no dates are showing up, check your spelling): ")
-    if ticker:
-        expiryoptions = getpossibleexpiry(ticker)
-        if expiryoptions:
-            expiryoptions.insert(0, 'No date selected')
-            expiry = st.selectbox('Please select an expiry date', expiryoptions)
-            if expiry!='No date selected':
-                writeoptionprice(ticker, expiry)
-                st.write("Options added")
+    if 'mode' not in st.session_state:
+        st.session_state['mode'] = None
+
+    left, middle, right = st.columns(3)
+    if left.button('Write Data', width = 'stretch'):
+        st.session_state['mode'] = 'write'
+    if middle.button('Read Data', width = 'stretch'):
+        st.session_state['mode'] = 'read'
+    if right.button('Analyze Full', width = 'stretch'):
+        st.session_state['mode'] = 'analyze'
+
+    if st.session_state['mode'] == "write":
+        ticker = st.text_input("Ticker (if no dates are showing up, check your spelling): ")
+        if ticker:
+            expiryoptions = getpossibleexpiry(ticker)
+            if expiryoptions:
+                expiryoptions.insert(0, 'No date selected')
+                expiry = st.selectbox('Please select an expiry date', expiryoptions)
+                if expiry!='No date selected':
+                    writeoptionprice(ticker, expiry)
+                    st.write("Options added")
 
 
 
