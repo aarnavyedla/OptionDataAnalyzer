@@ -76,18 +76,19 @@ def putfromcall(call, s, x, r, t):
 
 def getpossibleexpiry(ticker):
     return list(yf.Ticker(ticker).options)
-a='''
+
 def writeoptionprice(stockticker, date):
-    conn = pymysql.connect(**db_config)
+    conn = init_connection()
     ticker = yf.Ticker(stockticker)
     opt_chain = ticker.option_chain(date)
     
     calls = opt_chain.calls
 
     for i, row in calls.iterrows():
-        stock = float(ticker.history(start=row["lastTradeDate"], period="1m")["Close"].iloc[0])
+        #st.write(ticker.history(start=row["lastTradeDate"], period="1m")["Close"])
+        stock = float(ticker.history(start=row["lastTradeDate"], period="1d")["Close"].iloc[0])
         strike = float(row["strike"])
-        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1m")["Close"] / 100).iloc[0])
+        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1d")["Close"] / 100).iloc[0])
         time = int((datetime.datetime.strptime("2025-09-05", "%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) // 86400 + ((datetime.datetime.strptime("2025-09-05","%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) % 86400 > 0)) / 365
         volatility = row["impliedVolatility"]
 
@@ -110,9 +111,9 @@ def writeoptionprice(stockticker, date):
 
     puts = opt_chain.puts
     for i, row in puts.iterrows():
-        stock = float(ticker.history(start=row["lastTradeDate"], period="1m")["Close"].iloc[0])
+        stock = float(ticker.history(start=row["lastTradeDate"], period="1d")["Close"].iloc[0])
         strike = float(row["strike"])
-        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1m")["Close"] / 100).iloc[0])
+        interest = float((yf.Ticker("^TNX").history(start=row["lastTradeDate"], period="1d")["Close"] / 100).iloc[0])
         time = int((datetime.datetime.strptime("2025-09-05", "%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) // 86400 + ((datetime.datetime.strptime("2025-09-05","%Y-%m-%d").timestamp() - row['lastTradeDate'].timestamp()) % 86400 > 0)) / 365
         volatility = row["impliedVolatility"]
 
@@ -133,14 +134,26 @@ def writeoptionprice(stockticker, date):
                                      putdata['actprice'], putdata['bsprice'], putdata['mcprice']))
             conn.commit()
     conn.close()
-    return 
-'''
+    return
 
 def get_ca_file():
     ca_text = st.secrets["tidb"]["SSL_CA"]
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as f:
         f.write(ca_text.encode())
         return f.name
+
+def init_connection():
+    ca_path = get_ca_file()
+    return pymysql.connect(
+        host=st.secrets["tidb"]["DB_HOST"],
+        port=st.secrets["tidb"]["DB_PORT"],
+        user=st.secrets["tidb"]["DB_USER"],
+        password=st.secrets["tidb"]["DB_PASSWORD"],
+        database=st.secrets["tidb"]["DB_DATABASE"],
+        ssl_verify_identity = st.secrets["tidb"]["SSL_VERIFY_IDENTITY"],
+        ssl_verify_cert = st.secrets["tidb"]["SSL_VERIFY_CERT"],
+        ssl_ca=ca_path
+    )
 
 def reducewhitespace():
     st.markdown(
@@ -175,7 +188,6 @@ def main():
 
 
     st.title('Option Data Collection')
-    st.write(get_ca_file())
 
     reducewhitespace()
 
@@ -216,6 +228,10 @@ def main():
         if expiryoptions:
             expiryoptions.insert(0, 'No date selected')
             expiry = st.selectbox('Please select an expiry date', expiryoptions)
+            if expiry!='No date selected':
+                writeoptionprice(ticker, expiry)
+                st.write("Options added")
+
 
 
 if __name__=="__main__":
