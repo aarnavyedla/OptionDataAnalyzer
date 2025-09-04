@@ -10,6 +10,9 @@ import pymysql
 import tempfile
 import warnings
 
+from streamlit import session_state
+
+
 def CallBlackCalc(s,x,r,t,v):
     d1 = (np.log(s/x)+t*(r+v**2/2))/(v*np.sqrt(t))
     d2 = d1-(v*np.sqrt(t))
@@ -82,7 +85,9 @@ def writeoptionprice(stockticker, date):
     conn = init_connection()
     ticker = yf.Ticker(stockticker)
     opt_chain = ticker.option_chain(date)
-    
+    numoptions = 0
+    placeholder = st.empty()
+
     calls = opt_chain.calls
 
     for i, row in calls.iterrows():
@@ -102,12 +107,14 @@ def writeoptionprice(stockticker, date):
             "mcprice": float(MonteCarloCall(stock, strike, interest, time, volatility, 10, 100000, False)[0])
         }
 
-        if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
+        if row['lastPrice'] > 0.1:
             with conn.cursor() as cursor:
                 sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
                 cursor.execute(sql, (calldata['tickerid'], calldata['company'].upper(), calldata['date'], calldata['is_call'],
                                      calldata['actprice'], calldata['bsprice'], calldata['mcprice']))
             conn.commit()
+            numoptions += 1
+            placeholder.markdown('Number of options added: '+str(numoptions))
 
     puts = opt_chain.puts
     for i, row in puts.iterrows():
@@ -127,33 +134,36 @@ def writeoptionprice(stockticker, date):
             "mcprice": float(MonteCarloPut(stock, strike, interest, time, volatility, 10, 100000))
         }
 
-        if row['openInterest'] > 50 and row['lastPrice'] > 0.1:
+        if row['lastPrice'] > 0.1:
             with conn.cursor() as cursor:
                 sql = "INSERT IGNORE INTO option_pricer_data (tickerid, company, date, is_call, actprice, bsprice, mcprice) VALUES (%s, %s, %s, %s, %s, %s, %s)"
                 cursor.execute(sql, (putdata['tickerid'], putdata['company'].upper(), putdata['date'], putdata['is_call'],
                                      putdata['actprice'], putdata['bsprice'], putdata['mcprice']))
             conn.commit()
+            numoptions += 1
+            placeholder.markdown('Number of options added: '+str(numoptions))
+
     conn.close()
     return
 
 def getwrittencompanies():
-    conn = pymysql.connect(**db_config)
+    conn = init_connection()
     query = 'SELECT DISTINCT company FROM option_pricer_data'
     df = pd.read_sql(query, conn)
     conn.close()
-    return df
+    return sorted(df['company'].tolist())
 
 def getwrittencompanydates(stockticker):
     ticker = stockticker.upper()
-    conn = pymysql.connect(**db_config)
+    conn = init_connection()
     query = 'SELECT DISTINCT date FROM option_pricer_data WHERE company=%s'
     df = pd.read_sql(query, conn, params = [ticker])
     conn.close()
-    return df
+    return sorted(df['date'].tolist())
 
 def getoptiondata(stockticker, date):
     ticker = stockticker.upper()
-    conn = pymysql.connect(**db_config)
+    conn = init_connection()
     query = 'SELECT * FROM option_pricer_data WHERE company=%s AND date=%s'
     df = pd.read_sql(query, conn, params = [ticker, date])
     conn.close()
@@ -247,6 +257,10 @@ def main():
 
     if 'mode' not in st.session_state:
         st.session_state['mode'] = None
+    if 'company' not in st.session_state:
+        st.session_state['company'] = None
+    if 'date' not in st.session_state:
+        st.session_state['date'] = None
 
     left, middle, right = st.columns(3)
     if left.button('Write Data', width = 'stretch'):
@@ -257,6 +271,7 @@ def main():
         st.session_state['mode'] = 'analyze'
 
     if st.session_state['mode'] == "write":
+        st.write('Please wait until the text "All options added" is shown before switching to Read Data or Analyze Full')
         ticker = st.text_input("Ticker (if no dates are showing up, check your spelling): ")
         if ticker:
             expiryoptions = getpossibleexpiry(ticker)
@@ -265,7 +280,26 @@ def main():
                 expiry = st.selectbox('Please select an expiry date', expiryoptions)
                 if expiry!='No date selected':
                     writeoptionprice(ticker, expiry)
-                    st.write("Options added")
+                    with st.empty():
+                        st.write("All options added")
+
+    if st.session_state['mode'] == "read":
+        try:
+            del company
+        except:
+            pass
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state['company_list'] = getwrittencompanies()
+            company = st.radio('Select a company', st.session_state['company_list'], index = None, key = "company")
+        with col2:
+            if company:
+                st.session_state['date_list'] = getwrittencompanydates(company)
+                date = st.radio('Select a date for '+company, st.session_state['date_list'], index = None, key = "date")
+        if company and date:
+            st.empty().dataframe(getoptiondata(company,date))
+
 
 
 
