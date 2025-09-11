@@ -5,3 +5,5 @@ matplotlib
 yfinance
 datetime
 pymysql
+rpy2
+PIL

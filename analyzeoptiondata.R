@@ -105,7 +105,6 @@ skewsmirk<- function(data){
 	puts  <- data[data$is_call == 0, ]	
 
 	plot(calls$moneyness, calls$impliedvol, col = "blue", pch = 16, xlab = "Moneyness (S/K)", ylab = "Implied Volatility", main = "Volatility Smile / Skew Calls")
-	#points(puts$moneyness, puts$impliedvol, col = "red", pch = 16)
 	plot(puts$moneyness, puts$impliedvol, col = "red", pch = 16, xlab = "Moneyness (S/K)", ylab = "Implied Volatility", main = "Volatility Smile / Skew Puts")
 	
 	legend("topright", legend = c("Call","Put"),
@@ -118,22 +117,22 @@ make_vs <- function(df,
                              strike_col = "strikeprice",
                              maturity_col = "timetoexpiry",
                              iv_col = "impliedvol",
-                             moneyness_range = c(0.8, 1.2),   # grid moneyness range
-                             maturity_range = NULL,           # default from data
+                             moneyness_range = c(0.8, 1.2),
+                             maturity_range = NULL,
                              moneyness_len = 50,
                              maturity_len = 50,
                              loess_span = 0.25) {
 
-  # Basic checks
+
 	df[maturity_col] = df[maturity_col]/365
 	
  	required <- c(underlying_col, strike_col, maturity_col, iv_col)
  	if (!all(required %in% names(df))) stop("Dataframe must contain columns: ", paste(required, collapse=", "))
 
-  # Compute moneyness S/K (use numeric underlying if vector or scalar)
+
  	S <- df[[underlying_col]]
  	K <- df[[strike_col]]
-  # If S is single value repeated, still fine
+
  	moneyness <- as.numeric(S) / as.numeric(K)
 
  	df2 <- data.frame(
@@ -142,49 +141,37 @@ make_vs <- function(df,
     		iv = as.numeric(df[[iv_col]])
   	)
 
-  # Remove rows with missing/invalid values
+
   	df2 <- df2[is.finite(df2$moneyness) & is.finite(df2$maturity) & is.finite(df2$iv), ]
   	if (nrow(df2) == 0) stop("No valid rows in data after cleaning.")
 
-  # Optional: limit to a reasonable band to avoid illiquid extreme strikes
+
   	if (!is.null(moneyness_range)) {
     		df2 <- df2[df2$moneyness >= moneyness_range[1] & df2$moneyness <= moneyness_range[2], ]
   	}
   	if (nrow(df2) == 0) stop("No data in requested moneyness range.")
 
-  # Define maturity range if not provided
+
   	if (is.null(maturity_range)) {
     		maturity_range <- range(df2$maturity, na.rm = TRUE)
   	}
 
-  # Create prediction grid
+
   	m_grid <- seq(min(df2$moneyness), max(df2$moneyness), length.out = moneyness_len)
   	t_grid <- seq(min(df2$maturity), max(df2$maturity), length.out = maturity_len)
 	grid <- expand.grid(moneyness = m_grid, maturity = t_grid)
 
-  # Fit a LOESS surface: iv ~ moneyness + maturity
-  # Use control to avoid errors on small data
 	lo <- loess(iv ~ moneyness + maturity,
               data = df2,
               span = loess_span,
               control = loess.control(surface = "direct"))
-  
-  # Predictions
+
   	preds <- predict(lo, newdata = grid)
-	
-  
-  # Clip negative or extremely small IVs
 	preds[preds < 0] <- 0.001
-  	#preds <- pmax(preds, min(df2$iv))
-  	#preds <- pmin(preds, max(df2$iv))
 
-
-  # If some NA in preds (extrapolation), we can fallback to nearest observed mean in vicinity
   	if (any(is.na(preds))) {
-    # fill NA preds with nearest observed iv mean using simple approach
     		library_calc <- try(requireNamespace("FNN", quietly = TRUE), silent = TRUE)
     		if (library_calc) {
-      # use k-nearest neighbor if FNN is available
       			library(FNN)
       			obs_xy <- as.matrix(df2[, c("moneyness", "maturity")])
       			grd_xy <- as.matrix(grid[, c("moneyness", "maturity")])
@@ -196,13 +183,11 @@ make_vs <- function(df,
       			}
     		} 
 		else {
-      # simple fallback: use loess predict with larger span
       			lo2 <- loess(iv ~ moneyness + maturity, data = df2, span = min(1, loess_span * 2))
       			preds[is.na(preds)] <- predict(lo2, newdata = grid[is.na(preds), ])
     		}
   	}
 
-  # Reshape into matrix for plotting
   	zmat <- matrix(preds, nrow = moneyness_len, ncol = maturity_len, byrow = FALSE)
   	rownames(zmat) <- round(m_grid, 4)
   	colnames(zmat) <- round(t_grid, 4)
@@ -218,13 +203,11 @@ make_vs <- function(df,
   	return(result)
 }
 
-# Basic base-R 3D surface plot using persp()
 plot_vs_persp <- function(vs, theta = 30, phi = 25, col = "lightblue", ticktype = "detailed") {
  	m <- vs$moneyness
  	t <- vs$maturity
  	z <- vs$iv_matrix
 
-  # persp expects z with rows = x, cols = y
  	persp(x = m, y = t, z = z,
     		xlab = "Moneyness (S/K)", ylab = "Maturity (years)", zlab = "Implied Volatility",
         	theta = theta, phi = phi, expand = 0.6, col = col, ticktype = ticktype, border = NA)
@@ -241,4 +224,4 @@ plot_vs_plotly <- function(vs) {
              yaxis = list(title = "Maturity (days)"),
              zaxis = list(title = "Implied Volatility")))
 }
-#plot_vs_plotly(make_vs(d5put))
+
