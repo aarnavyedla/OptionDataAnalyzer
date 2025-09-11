@@ -1,3 +1,7 @@
+test<-function(){
+    print('Hello World')
+}
+
 analyze<-function(data){
 
 	data['diffbs'] = percentchange(data$actprice,data$bsprice)

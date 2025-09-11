@@ -11,9 +11,10 @@ import pymysql
 import tempfile
 from PIL import Image
 import warnings
-import rpy2.robjects as ro
+'''import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri, conversion
-from rpy2.robjects.packages import importr
+from rpy2.robjects.packages import importr'''
+import subprocess
 
 def CallBlackCalc(s,x,r,t,v):
     d1 = (np.log(s/x)+t*(r+v**2/2))/(v*np.sqrt(t))
@@ -321,14 +322,15 @@ def main():
 
     if st.session_state['mode'] == 'analyze':
         data = getalldata()
-        with conversion.localconverter(ro.default_converter + pandas2ri.converter):
+        '''with conversion.localconverter(ro.default_converter + pandas2ri.converter):
             grdevices = importr('grDevices')
             ro.r['source']("analyzeoptiondata.R")
             ro.globalenv['data'] = ro.conversion.py2rpy(data)
             grdevices.png(file="multi_plot.png", width=1200, height=800)
             ro.r('skewsmirk(data)')
             grdevices.dev_off()
-        st.image(Image.open("multi_plot.png"), caption="Multi-Plot from R")
+        st.image(Image.open("multi_plot.png"), caption="Multi-Plot from R")'''
+        process1 = subprocess.Popen(['Rscript', 'analyzeoptiondata.R', 'test',], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 if __name__=='__main__':
