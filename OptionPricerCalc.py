@@ -332,7 +332,7 @@ def main():
         st.image(Image.open("multi_plot.png"), caption="Multi-Plot from R")'''
         process1 = subprocess.Popen(['Rscript', 'analyzeoptiondata.R', 'test',], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text = True)
         result1 = process1.communicate()
-        st.write(result1.stdout.decode('utf-8'))
+        st.write(result1)
 
 if __name__=='__main__':
     main()
