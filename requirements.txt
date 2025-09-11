@@ -6,4 +6,4 @@ yfinance
 datetime
 pymysql
 rpy2
-PIL
+Pillow
