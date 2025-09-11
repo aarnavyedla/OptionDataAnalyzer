@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from streamlit import session_state
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -330,9 +331,22 @@ def main():
             ro.r('skewsmirk(data)')
             grdevices.dev_off()
         st.image(Image.open("multi_plot.png"), caption="Multi-Plot from R")'''
-        process1 = subprocess.Popen(['Rscript', 'analyzeoptiondata.R', 'test',], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text = True)
-        result1 = process1.communicate()
-        st.write(result1)
+        #process1 = subprocess.Popen(['Rscript', 'skewsmirk.R', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text = True)
+        #result1 = process1.communicate()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_csv = os.path.join(tmpdir, "data.csv")
+            plot1 = os.path.join(tmpdir, "plot_1.png")
+            plot2 = os.path.join(tmpdir, "plot_2.png")
+            input_csv = input_csv.replace("\\", "/")
+            plot1 = plot1.replace("\\", "/")
+            plot2 = plot2.replace("\\", "/")
+            data.to_csv(input_csv, index=False)
+
+            subprocess.run(['Rscript', 'skewsmirk.R',input_csv, plot1, plot2], check=True)
+
+            st.image(plot1, use_container_width=True)
+            st.image(plot2, use_container_width=True)
 
 if __name__=='__main__':
     main()
