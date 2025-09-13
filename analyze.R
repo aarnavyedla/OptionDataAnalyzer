@@ -62,7 +62,7 @@ invisible(dev.off())
 
 #mc prices against act prices
 png(p2out, width = 800, height = 600)
-plot(actprices, bsprices, type = 'p', col='green', main = 'BS Prices vs. Actual Prices')
+plot(actprices, mcprices, type = 'p', col='green', main = 'MC Prices vs. Actual Prices')
 abline(lm(mcprices~actprices), col = 'black')
 invisible(dev.off())
 
