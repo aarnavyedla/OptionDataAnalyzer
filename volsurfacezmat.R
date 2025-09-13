@@ -1,101 +1,26 @@
-analyze<-function(data){
-
-	data['diffbs'] = (data$bsprice/data$actprice-1)*100
-	data['diffmc'] = (data$mcprice/data$actprice-1)*100
-	data['moneyness'] = data$stockprice/data$strikeprice
-
-	data = remove_outliers_df(data, cols = c('actprice', 'bsprice', 'mcprice'))
-	data = remove_outliers_df(data, cols = c('diffbs', 'diffmc'), multiplier = 3.5) 
-		
-	time = data$timetoexpiry
-	actprices = data$actprice
-	bsprices = data$bsprice
-	mcprices = data$mcprice
-	iv = data$impliedvol
-	stock = data$stockprice
-	strike = data$strikeprice
-	pdiffbs = data$diffbs
-	pdiffmc = data$diffmc
-
-	par(mfrow=c(2,4))
-
-	#mc prices against act prices
-	plot(actprices, bsprices, type = 'p', col='red')
-	abline(lm(bsprices~actprices), col = 'black')
-
-	#mc prices against act prices
-	plot(actprices, bsprices, type = 'p', col='green')
-	abline(lm(mcprices~actprices), col = 'black')
-
-	#bs/mc error boxplot
-	boxplot(pdiffbs, pdiffmc, names=c('BS Error', 'MC Error'))
-
-	#plotting mc error against bs error
-	plot(pdiffbs, pdiffmc, xlab="BS Error", ylab="MC Error")
-
-	#histogram of bs error
-	hist(pdiffbs, breaks=30, main="Black-Scholes Errors")
-
-	#histogram of mc error
-	hist(pdiffmc, breaks=30, main="Monte Carlo Errors")
-
-	#qq plot of bs error against normal dist
-	qqnorm(pdiffbs); qqline(pdiffbs, col="red")
-
-	#qq plot of mc error against normal dist
-	qqnorm(pdiffmc); qqline(pdiffmc, col="green")
-
-	#creating lm modeling ac = bs+mc
-
-	model = lm(actprices~bsprices+mcprices)
-	print(summary(model))
-
-	#creating volatility surface
-	surface = make_vs(remove_outliers_df(data, cols = 'timetoexpiry'))
-	plot_vs_plotly(surface)
-}
-
 remove_outliers_df <- function(df, cols, multiplier = 10) {
-  
-	outlier_rows <- rep(FALSE, nrow(df))  # track which rows have outliers
-  
+
+	outlier_rows <- rep(FALSE, nrow(df))
+
 	for (col in cols) {
 		if (is.numeric(df[[col]])) {
       		Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
       		Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
       		IQR <- Q3 - Q1
-      
+
       		lower_bound <- Q1 - multiplier * IQR
       		upper_bound <- Q3 + multiplier * IQR
-      
+
       		outlier_rows <- outlier_rows | (df[[col]] < lower_bound | df[[col]] > upper_bound)
-    		} 
+    		}
 
 		else {
       		warning(paste("Column", col, "is not numeric — skipped."))
     		}
   	}
-  
+
 	cleaned_df <- df[!outlier_rows, ]
 	return(cleaned_df)
-}
-
-skewsmirk<- function(data){
-
-	par(mfrow=c(1,2))
-
-	data['moneyness'] = data$stockprice/data$strikeprice
-	data = data[data$moneyness>0.8 & data$moneyness<1.2,]
-
-	calls <- data[data$is_call == 1, ]
-	puts  <- data[data$is_call == 0, ]	
-
-	plot(calls$moneyness, calls$impliedvol, col = "blue", pch = 16, xlab = "Moneyness (S/K)", ylab = "Implied Volatility", main = "Volatility Smile / Skew Calls")
-	plot(puts$moneyness, puts$impliedvol, col = "red", pch = 16, xlab = "Moneyness (S/K)", ylab = "Implied Volatility", main = "Volatility Smile / Skew Puts")
-	
-	legend("topright", legend = c("Call","Put"),
-       col = c("blue","red"), pch = 16)
-
 }
 
 make_vs <- function(df,
@@ -109,9 +34,9 @@ make_vs <- function(df,
                              maturity_len = 50,
                              loess_span = 0.25) {
 
-
+    df = remove_outliers_df(df, cols = maturity_col)
 	df[maturity_col] = df[maturity_col]/365
-	
+
  	required <- c(underlying_col, strike_col, maturity_col, iv_col)
  	if (!all(required %in% names(df))) stop("Dataframe must contain columns: ", paste(required, collapse=", "))
 
@@ -167,7 +92,7 @@ make_vs <- function(df,
         			idxs <- nn$nn.index[i, ]
         			preds[fill_idx[i]] <- mean(df2$iv[idxs], na.rm = TRUE)
       			}
-    		} 
+    		}
 		else {
       			lo2 <- loess(iv ~ moneyness + maturity, data = df2, span = min(1, loess_span * 2))
       			preds[is.na(preds)] <- predict(lo2, newdata = grid[is.na(preds), ])
@@ -186,28 +111,41 @@ make_vs <- function(df,
     		iv_matrix = zmat
   	)
   	class(result) <- "volsurf"
-  	return(result)
+
+  	write.csv(zmat, file = stdout())
+  	#print((m_grid))
+  	#print('t_grid')
+  	#print(t_grid)
+
 }
-
-plot_vs_persp <- function(vs, theta = 30, phi = 25, col = "lightblue", ticktype = "detailed") {
- 	m <- vs$moneyness
- 	t <- vs$maturity
- 	z <- vs$iv_matrix
-
- 	persp(x = m, y = t, z = z,
-    		xlab = "Moneyness (S/K)", ylab = "Maturity (years)", zlab = "Implied Volatility",
-        	theta = theta, phi = phi, expand = 0.6, col = col, ticktype = ticktype, border = NA)
-}
-
-plot_vs_plotly <- function(vs) {
- 	if (!requireNamespace("plotly", quietly = TRUE)) {
-   		stop("plotly not installed. Install with install.packages('plotly') to use this function.")
+plot_vs_plotly <- function(vs, output_file) {
+ 	if (!requireNamespace("ggplot2", quietly = TRUE)) {
+   		install.packages('ggplot2', repos = "http://cran.r-project.org")
   	}
+ 	if (!requireNamespace("plotly", quietly = TRUE)) {
+   		install.packages('plotly', repos = "http://cran.r-project.org")
+  	}
+  	if (!requireNamespace("htmlwidgets", quietly = TRUE)) {
+   		install.packages('htmlwidgets', repos = "http://cran.r-project.org")
+  	}
+  	library(ggplot2)
   	library(plotly)
-  	plot_ly(x = vs$moneyness, y = vs$maturity*365, z = vs$iv_matrix) %>%
+  	library(htmlwidgets)
+
+  	return(plot_ly(x = vs$moneyness, y = vs$maturity*365, z = vs$iv_matrix) %>%
     	add_surface() %>%
     	layout(scene = list(xaxis = list(title = "Moneyness (S/K)"),
              yaxis = list(title = "Maturity (days)"),
-             zaxis = list(title = "Implied Volatility")))
-}
+             zaxis = list(title = "Implied Volatility"))))
 
+    #htmlwidgets::saveWidget(p, file = output_file, selfcontained = FALSE)
+    #print(p)
+    #return(p)
+}
+args <- commandArgs(trailingOnly=TRUE)
+
+input = args[1]
+data = read.csv(input)
+output = args[2]
+#plot_vs_plotly(make_vs(data),output)
+make_vs(data)

@@ -6,3 +6,4 @@ yfinance
 datetime
 pymysql
 Pillow
+plotly

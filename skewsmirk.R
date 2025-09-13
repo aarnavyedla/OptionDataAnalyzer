@@ -3,9 +3,7 @@ args = commandArgs(trailingOnly = TRUE)
 input = args[1]
 p1out = args[2]
 p2out = args[3]
-print(input)
-print(p1out)
-print(p2out)
+
 data = read.csv(input)
 
 data['moneyness'] = data$stockprice/data$strikeprice

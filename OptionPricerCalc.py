@@ -1,7 +1,10 @@
 import streamlit as st
 import os
+import io
 from streamlit import session_state
 import matplotlib.pyplot as plt
+import plotly
+import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -12,9 +15,6 @@ import pymysql
 import tempfile
 from PIL import Image
 import warnings
-'''import rpy2.robjects as ro
-from rpy2.robjects import pandas2ri, conversion
-from rpy2.robjects.packages import importr'''
 import subprocess
 
 def CallBlackCalc(s,x,r,t,v):
@@ -206,11 +206,6 @@ def init_connection():
         ssl_ca=ca_path
     )
 
-'''@st.cache_resource
-def loadscript():
-    ro.r['source']['analyzeoptiondata.R']
-    return ro
-'''
 def reducewhitespace():
     st.markdown(
         '''
@@ -242,7 +237,7 @@ def main():
     vol = 0.32
     print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))'''
 
-
+    st.set_page_config(layout="wide")
     st.title('Option Data Collection')
     warnings.filterwarnings('ignore', category=UserWarning)
     reducewhitespace()
@@ -322,31 +317,90 @@ def main():
             st.empty().dataframe(getoptiondata(company,date))
 
     if st.session_state['mode'] == 'analyze':
+        col1, col2 = st.columns(2)
         data = getalldata()
-        '''with conversion.localconverter(ro.default_converter + pandas2ri.converter):
-            grdevices = importr('grDevices')
-            ro.r['source']("analyzeoptiondata.R")
-            ro.globalenv['data'] = ro.conversion.py2rpy(data)
-            grdevices.png(file="multi_plot.png", width=1200, height=800)
-            ro.r('skewsmirk(data)')
-            grdevices.dev_off()
-        st.image(Image.open("multi_plot.png"), caption="Multi-Plot from R")'''
-        #process1 = subprocess.Popen(['Rscript', 'skewsmirk.R', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text = True)
-        #result1 = process1.communicate()
+        calls = data.loc[data['is_call']==1]
+        puts = data.loc[data['is_call']==0]
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            input_csv = os.path.join(tmpdir, "data.csv")
-            plot1 = os.path.join(tmpdir, "plot_1.png")
-            plot2 = os.path.join(tmpdir, "plot_2.png")
-            input_csv = input_csv.replace("\\", "/")
-            plot1 = plot1.replace("\\", "/")
-            plot2 = plot2.replace("\\", "/")
-            data.to_csv(input_csv, index=False)
+        try:
+            del analyzemode
+        except:
+            pass
 
-            subprocess.run(['Rscript', 'skewsmirk.R',input_csv, plot1, plot2], check=True)
+        with st.empty():
+            analyzemode = st.radio('Select the type of option you want analyzed', ['All Calls', 'All Puts'], index = None, key = 'company')
+            if analyzemode:
+                st.write('')
 
-            st.image(plot1, use_container_width=True)
-            st.image(plot2, use_container_width=True)
+        if analyzemode:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                input_csv = os.path.join(tmpdir, "data.csv")
+                plot1 = os.path.join(tmpdir, "plot_1.png")
+                plot2 = os.path.join(tmpdir, "plot_2.png")
+                plot3 = os.path.join(tmpdir, "plot_3.png")
+                plot4 = os.path.join(tmpdir, "plot_4.png")
+                plot5 = os.path.join(tmpdir, "plot_5.png")
+                plot6 = os.path.join(tmpdir, "plot_6.png")
+                plot7 = os.path.join(tmpdir, "plot_7.png")
+                plot8 = os.path.join(tmpdir, "plot_8.png")
+                output_html = os.path.join(tmpdir, "surface.html")
+
+                if analyzemode == 'All Calls':
+                    calls.to_csv(input_csv, index = False)
+                elif analyzemode == 'All Puts':
+                    puts.to_csv(input_csv, index = False)
+
+                result = subprocess.run(['Rscript', 'analyze.R',input_csv, plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8], check=True, capture_output=True, text=True)
+                st.text(result.stdout)
+                res = subprocess.run(['Rscript', 'volsurfacezmat.R', input_csv, output_html], capture_output=True, text=True)
+                zmat = pd.read_csv(io.StringIO(res.stdout[3:]))
+
+                res = subprocess.run(['Rscript', 'volsurfacemtgrid.R', input_csv, output_html], capture_output=True,text=True)
+                res = res.stdout.split()
+
+                t_gridstart = res.index('"t_grid"')
+                m_grid = res[0:t_gridstart]
+                t_grid = res[t_gridstart+1:]
+                for i in m_grid:
+                    if '[' in i:
+                        m_grid.remove(i)
+                for i in t_grid:
+                    if '[' in i:
+                        t_grid.remove(i)
+
+                m_grid=[float(i) for i in m_grid]
+                t_grid=[float(i)*365 for i in t_grid]
+
+                m_grid, t_grid = np.meshgrid(m_grid, t_grid)
+
+                fig = go.Figure(data=[go.Surface(x=m_grid, y=t_grid, z=zmat)])
+
+
+                fig.update_layout(
+                    template = 'plotly_dark',
+                    title="Implied Volatility Surface",
+                    scene=dict(
+                        xaxis_title="Moneyness",
+                        yaxis_title="Maturity (Days)",
+                        zaxis_title="IV"
+                    )
+                )
+
+                html_str = plotly.io.to_html(fig, full_html=False, include_plotlyjs='cdn')
+                st.components.v1.html(html_str, height=800, scrolling=True)
+
+
+                with col1:
+                    st.image(plot1, use_container_width=True)
+                    st.image(plot3, use_container_width=True)
+                    st.image(plot5, use_container_width=True)
+                    st.image(plot7, use_container_width=True)
+
+                with col2:
+                    st.image(plot2, use_container_width=True)
+                    st.image(plot4, use_container_width=True)
+                    st.image(plot6, use_container_width=True)
+                    st.image(plot8, use_container_width=True)
 
 if __name__=='__main__':
     main()
