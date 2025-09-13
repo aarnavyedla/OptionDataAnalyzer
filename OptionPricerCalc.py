@@ -230,8 +230,8 @@ def reducewhitespace():
 
 def main():
 
-    st.set_page_config(layout='wide')
-    st.title('Option Data Collection')
+    st.set_page_config(layout='wide', page_title='Option Data Analyzer')
+    st.title('Option Data Analyzer')
     warnings.filterwarnings('ignore', category=UserWarning)
     reducewhitespace()
 
