@@ -1,29 +1,29 @@
-remove_outliers_df <- function(df, cols, multiplier = 10) {
+remove_outliers_df = function(df, cols, multiplier = 1.5) {
 
-	outlier_rows <- rep(FALSE, nrow(df))
+	outlier_rows = rep(FALSE, nrow(df))
 
 	for (col in cols) {
 		if (is.numeric(df[[col]])) {
-      		Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
-      		Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
-      		IQR <- Q3 - Q1
+      		Q1 = quantile(df[[col]], 0.25, na.rm = TRUE)
+      		Q3 = quantile(df[[col]], 0.75, na.rm = TRUE)
+      		IQR = Q3 - Q1
 
-      		lower_bound <- Q1 - multiplier * IQR
-      		upper_bound <- Q3 + multiplier * IQR
+      		lower_bound = Q1 - multiplier * IQR
+      		upper_bound = Q3 + multiplier * IQR
 
-      		outlier_rows <- outlier_rows | (df[[col]] < lower_bound | df[[col]] > upper_bound)
+      		outlier_rows = outlier_rows | (df[[col]] < lower_bound | df[[col]] > upper_bound)
     		}
 
 		else {
-      		warning(paste("Column", col, "is not numeric — skipped."))
+      		warning(paste('Column', col, 'is not numeric — skipped.'))
     		}
   	}
 
-	cleaned_df <- df[!outlier_rows, ]
+	cleaned_df = df[!outlier_rows, ]
 	return(cleaned_df)
 }
 
-args <- commandArgs(trailingOnly=TRUE)
+args = commandArgs(trailingOnly=TRUE)
 
 input = args[1]
 p1out = args[2]
@@ -73,40 +73,37 @@ invisible(dev.off())
 
 #plotting mc error against bs error
 png(p4out, width = 800, height = 600)
-plot(pdiffbs, pdiffmc, xlab="BS Error", ylab="MC Error", main = 'MC Error vs. BS Error')
+plot(pdiffbs, pdiffmc, xlab='BS Error', ylab='MC Error', main = 'MC Error vs. BS Error')
 invisible(dev.off())
 
 #histogram of bs error
 png(p5out, width = 800, height = 600)
-hist(pdiffbs, breaks=30, main="Black-Scholes Errors")
+hist(pdiffbs, breaks=30, main='Black-Scholes Errors')
 invisible(dev.off())
 
 #histogram of mc error
 png(p6out, width = 800, height = 600)
-hist(pdiffmc, breaks=30, main="Monte Carlo Errors")
+hist(pdiffmc, breaks=30, main='Monte Carlo Errors')
 invisible(dev.off())
 
 #qq plot of bs error against normal dist
 png(p7out, width = 800, height = 600)
-qqnorm(pdiffbs, main = 'BS Error Normal QQ Plot', ylab = 'BS Quantiles'); qqline(pdiffbs, col="red")
+qqnorm(pdiffbs, main = 'BS Error Normal QQ Plot', ylab = 'BS Quantiles'); qqline(pdiffbs, col='red')
 invisible(dev.off())
 
 #qq plot of mc error against normal dist
 png(p8out, width = 800, height = 600)
-qqnorm(pdiffmc, main = 'MC Error Normal QQ Plot', ylab = 'MC Quantiles'); qqline(pdiffmc, col="green")
+qqnorm(pdiffmc, main = 'MC Error Normal QQ Plot', ylab = 'MC Quantiles'); qqline(pdiffmc, col='green')
 invisible(dev.off())
 
 #creating lm modeling ac = bs+mc
 
 model = lm(actprices~bsprices+mcprices)
-summary_text <- capture.output(summary(model)$coefficients, summary(model)$r.squared)
-#cat("Linear Model Summary\n---------------------\n")
+summary_text = capture.output(summary(model)$coefficients, summary(model)$r.squared)
+
 cat('Linear Model Estimating Actprices using BSprices and MC prices Coefficients: \n')
 print(summary(model)$coefficients)
 
-#cat(paste(summary_text, collapse = "\n"))
+
 cat('R-squared: ')
 cat(summary(model)$r.squared)
-#creating volatility surface
-#surface = make_vs(remove_outliers_df(data, cols = 'timetoexpiry'))
-#plot_vs_plotly(surface)

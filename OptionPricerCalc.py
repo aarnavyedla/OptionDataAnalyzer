@@ -51,7 +51,7 @@ def MonteCarloCall(s, x, r, t, v, n, m, plotshow):
         call = call + '0'
 
     se = str(np.round(se, 2))
-    # return 'Call value is ${0} with SE +/- {1}'.format(call,np.round(se,2))
+
 
     if plotshow:
         stp = stp.T
@@ -64,7 +64,7 @@ def MonteCarloCall(s, x, r, t, v, n, m, plotshow):
             plt.plot(j, stp[i])
 
         return [call, se, plt]
-        #st.pyplot(plt)
+
 
 
 
@@ -211,7 +211,7 @@ def reducewhitespace():
         '''
         <style>
         section[data-testid='stSidebar'] {
-            width: 400px !important;  # Set your desired width here
+            width: 400px !important; 
         }
         section[data-testid='st-emotion-cache-10p9htt'] {
             height: 3rem 
@@ -229,20 +229,11 @@ def reducewhitespace():
     )
 
 def main():
-    '''
-    stock = 62
-    strike = 60
-    interest = 0.04
-    time = 40/365
-    vol = 0.32
-    print(CallBlackCalc(stock,strike,interest,time,vol),PutBlackCalc(stock,strike,interest,time,vol))'''
 
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout='wide')
     st.title('Option Data Collection')
     warnings.filterwarnings('ignore', category=UserWarning)
     reducewhitespace()
-
-    #r_env = loadscript()
 
     with st.sidebar:
 
@@ -334,16 +325,16 @@ def main():
 
         if analyzemode:
             with tempfile.TemporaryDirectory() as tmpdir:
-                input_csv = os.path.join(tmpdir, "data.csv")
-                plot1 = os.path.join(tmpdir, "plot_1.png")
-                plot2 = os.path.join(tmpdir, "plot_2.png")
-                plot3 = os.path.join(tmpdir, "plot_3.png")
-                plot4 = os.path.join(tmpdir, "plot_4.png")
-                plot5 = os.path.join(tmpdir, "plot_5.png")
-                plot6 = os.path.join(tmpdir, "plot_6.png")
-                plot7 = os.path.join(tmpdir, "plot_7.png")
-                plot8 = os.path.join(tmpdir, "plot_8.png")
-                output_html = os.path.join(tmpdir, "surface.html")
+                input_csv = os.path.join(tmpdir, 'data.csv')
+                plot1 = os.path.join(tmpdir, 'plot_1.png')
+                plot2 = os.path.join(tmpdir, 'plot_2.png')
+                plot3 = os.path.join(tmpdir, 'plot_3.png')
+                plot4 = os.path.join(tmpdir, 'plot_4.png')
+                plot5 = os.path.join(tmpdir, 'plot_5.png')
+                plot6 = os.path.join(tmpdir, 'plot_6.png')
+                plot7 = os.path.join(tmpdir, 'plot_7.png')
+                plot8 = os.path.join(tmpdir, 'plot_8.png')
+                output_html = os.path.join(tmpdir, 'surface.html')
 
                 if analyzemode == 'All Calls':
                     calls.to_csv(input_csv, index = False)
@@ -378,11 +369,11 @@ def main():
 
                 fig.update_layout(
                     template = 'plotly_dark',
-                    title="Implied Volatility Surface",
+                    title='Implied Volatility Surface',
                     scene=dict(
-                        xaxis_title="Moneyness",
-                        yaxis_title="Maturity (Days)",
-                        zaxis_title="IV"
+                        xaxis_title='Moneyness',
+                        yaxis_title='Maturity (Days)',
+                        zaxis_title='IV'
                     )
                 )
 
