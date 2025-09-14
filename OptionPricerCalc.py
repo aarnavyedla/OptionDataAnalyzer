@@ -157,10 +157,11 @@ def writeoptionprice(stockticker, date):
     conn.close()
     return
 
-def getalldata():
+def getalldata(stockticker):
+    ticker = stockticker.upper()
     conn = init_connection()
-    query = 'SELECT * FROM option_pricer_data LIMIT 10000'
-    df = pd.read_sql(query, conn)
+    query = 'SELECT * FROM option_pricer_data WHERE company = %s'
+    df = pd.read_sql(query, conn, params=[ticker])
     conn.close()
     return df
 
@@ -269,6 +270,7 @@ def main():
     if 'mode' not in st.session_state:
         st.session_state['mode'] = None
 
+
     left, middle, right = st.columns(3)
     if left.button('Write Data', width = 'stretch'):
         st.session_state['mode'] = 'write'
@@ -299,7 +301,7 @@ def main():
         col1, col2 = st.columns(2)
         with col1:
             st.session_state['company_list'] = getwrittencompanies()
-            company = st.radio('Select a company', st.session_state['company_list'], index = None, key = 'company')
+            company = st.radio('Select a company to read from', st.session_state['company_list'], index = None, key = 'company')
         with col2:
             if company:
                 st.session_state['date_list'] = getwrittencompanydates(company)
@@ -309,21 +311,43 @@ def main():
 
     if st.session_state['mode'] == 'analyze':
         col1, col2 = st.columns(2)
-        data = getalldata()
-        calls = data.loc[data['is_call']==1]
-        puts = data.loc[data['is_call']==0]
 
         try:
             del analyzemode
         except:
             pass
+        try:
+            del option
+        except:
+            pass
+        try:
+            del dataacquired
+        except:
+            pass
+        #with st.empty():
 
-        with st.empty():
-            analyzemode = st.radio('Select the type of option you want analyzed', ['All Calls', 'All Puts'], index = None, key = 'company')
-            if analyzemode:
-                st.write('')
+        dataacquired = False
+        with col1:
+            st.session_state['company_list'] = getwrittencompanies()
+            option = st.radio('Select a company to analyze', st.session_state['company_list'], index = None, key = 'option')
+        with col2:
+            if option in st.session_state['company_list']:
+                data = getalldata(option)
+                calls = data.loc[data['is_call'] == 1]
+                puts = data.loc[data['is_call'] == 0]
+                optiontype = []
+                if not calls.empty:
+                    optiontype.append('Calls')
+                if not puts.empty:
+                    optiontype.append('Puts')
+                analyzemode = st.radio('Select the type of option you want analyzed', optiontype, index = None, key = 'analyzemode')
+                if analyzemode:
+                    st.write('')
+                    dataacquired = True
 
-        if analyzemode:
+
+
+        if dataacquired:
             with tempfile.TemporaryDirectory() as tmpdir:
                 input_csv = os.path.join(tmpdir, 'data.csv')
                 plot1 = os.path.join(tmpdir, 'plot_1.png')
@@ -336,13 +360,15 @@ def main():
                 plot8 = os.path.join(tmpdir, 'plot_8.png')
                 output_html = os.path.join(tmpdir, 'surface.html')
 
-                if analyzemode == 'All Calls':
+                if analyzemode == 'Calls':
                     calls.to_csv(input_csv, index = False)
-                elif analyzemode == 'All Puts':
+                elif analyzemode == 'Puts':
                     puts.to_csv(input_csv, index = False)
+
 
                 result = subprocess.run(['Rscript', 'analyze.R',input_csv, plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8], check=True, capture_output=True, text=True)
                 st.text(result.stdout)
+
                 res = subprocess.run(['Rscript', 'volsurfacezmat.R', input_csv, output_html], capture_output=True, text=True)
                 zmat = pd.read_csv(io.StringIO(res.stdout[3:]))
 

@@ -28,13 +28,13 @@ make_vs = function(df,
                              strike_col = 'strikeprice',
                              maturity_col = 'timetoexpiry',
                              iv_col = 'impliedvol',
-                             moneyness_range = c(0.8, 1.2),
+                             moneyness_range = c(0,3),
                              maturity_range = NULL,
                              moneyness_len = 50,
                              maturity_len = 50,
                              loess_span = 0.25) {
 
-    df = remove_outliers_df(df, cols = maturity_col)
+    #df = remove_outliers_df(df, cols = maturity_col)
 	df[maturity_col] = df[maturity_col]/365
 
  	required = c(underlying_col, strike_col, maturity_col, iv_col)
@@ -60,6 +60,7 @@ make_vs = function(df,
   	if (!is.null(moneyness_range)) {
     		df2 = df2[df2$moneyness >= moneyness_range[1] & df2$moneyness <= moneyness_range[2], ]
   	}
+
   	if (nrow(df2) == 0) stop('No data in requested moneyness range.')
 
 
@@ -71,6 +72,8 @@ make_vs = function(df,
   	m_grid = seq(min(df2$moneyness), max(df2$moneyness), length.out = moneyness_len)
   	t_grid = seq(min(df2$maturity), max(df2$maturity), length.out = maturity_len)
 	grid = expand.grid(moneyness = m_grid, maturity = t_grid)
+
+
 
 	lo = loess(iv ~ moneyness + maturity,
               data = df2,
