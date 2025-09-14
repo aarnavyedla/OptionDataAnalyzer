@@ -28,13 +28,13 @@ make_vs = function(df,
                              strike_col = 'strikeprice',
                              maturity_col = 'timetoexpiry',
                              iv_col = 'impliedvol',
-                             moneyness_range = c(0,3),
+                             moneyness_range = c(0.8,1.2),
                              maturity_range = NULL,
                              moneyness_len = 50,
                              maturity_len = 50,
                              loess_span = 0.25) {
 
-    #df = remove_outliers_df(df, cols = maturity_col)
+    df = remove_outliers_df(df, cols = maturity_col)
 	df[maturity_col] = df[maturity_col]/365
 
  	required = c(underlying_col, strike_col, maturity_col, iv_col)
@@ -68,12 +68,18 @@ make_vs = function(df,
     		maturity_range = range(df2$maturity, na.rm = TRUE)
   	}
 
+    if (min(df2$maturity)==max(df2$maturity)) {
+        df2$maturity[1]=df2$maturity[1]-0.001
+        df2$maturity[length(df2$maturity)]=df2$maturity[length(df2$maturity)]+0.001
+    }
 
   	m_grid = seq(min(df2$moneyness), max(df2$moneyness), length.out = moneyness_len)
   	t_grid = seq(min(df2$maturity), max(df2$maturity), length.out = maturity_len)
 	grid = expand.grid(moneyness = m_grid, maturity = t_grid)
 
-
+	if (min(df2$maturity)+0.002==max(df2$maturity)) {
+        df2$maturity=seq(min(df2$maturity), max(df2$maturity), length.out = length(df2$maturity))
+    }
 
 	lo = loess(iv ~ moneyness + maturity,
               data = df2,
