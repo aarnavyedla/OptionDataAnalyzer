@@ -160,8 +160,12 @@ def writeoptionprice(stockticker, date):
 def getalldata(stockticker):
     ticker = stockticker.upper()
     conn = init_connection()
-    query = 'SELECT * FROM option_pricer_data WHERE company = %s'
-    df = pd.read_sql(query, conn, params=[ticker])
+    if ticker == 'ALL DATA':
+        query = 'SELECT * FROM option_pricer_data'
+        df = pd.read_sql(query, conn)
+    else:
+        query = 'SELECT * FROM option_pricer_data WHERE company = %s'
+        df = pd.read_sql(query, conn, params=[ticker])
     conn.close()
     return df
 
@@ -310,6 +314,7 @@ def main():
             st.empty().dataframe(getoptiondata(company,date))
 
     if st.session_state['mode'] == 'analyze':
+        st.write('Note: if the 3d volatility surface has several spikes, try adding more data of the same ticker')
         col1, col2 = st.columns(2)
 
         try:
@@ -329,9 +334,9 @@ def main():
         dataacquired = False
         with col1:
             st.session_state['company_list'] = getwrittencompanies()
-            option = st.radio('Select a company to analyze', st.session_state['company_list'], index = None, key = 'option')
+            option = st.radio('Select a company to analyze', ['All Data']+st.session_state['company_list'], index = None, key = 'option')
         with col2:
-            if option in st.session_state['company_list']:
+            if option in ['All Data'] + st.session_state['company_list']:
                 data = getalldata(option)
                 calls = data.loc[data['is_call'] == 1]
                 puts = data.loc[data['is_call'] == 0]
