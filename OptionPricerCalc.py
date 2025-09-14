@@ -363,7 +363,6 @@ def main():
                 plot6 = os.path.join(tmpdir, 'plot_6.png')
                 plot7 = os.path.join(tmpdir, 'plot_7.png')
                 plot8 = os.path.join(tmpdir, 'plot_8.png')
-                output_html = os.path.join(tmpdir, 'surface.html')
 
                 if analyzemode == 'Calls':
                     calls.to_csv(input_csv, index = False)
@@ -374,10 +373,10 @@ def main():
                 result = subprocess.run(['Rscript', 'analyze.R',input_csv, plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8], check=True, capture_output=True, text=True)
                 st.text(result.stdout)
 
-                res = subprocess.run(['Rscript', 'volsurfacezmat.R', input_csv, output_html], capture_output=True, text=True)
+                res = subprocess.run(['Rscript', 'volsurfacezmat.R', input_csv], capture_output=True, text=True)
                 zmat = pd.read_csv(io.StringIO(res.stdout[3:]))
 
-                res = subprocess.run(['Rscript', 'volsurfacemtgrid.R', input_csv, output_html], capture_output=True,text=True)
+                res = subprocess.run(['Rscript', 'volsurfacemtgrid.R', input_csv], capture_output=True,text=True)
                 res = res.stdout.split()
 
                 t_gridstart = res.index('"t_grid"')

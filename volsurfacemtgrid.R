@@ -152,5 +152,4 @@ args = commandArgs(trailingOnly=TRUE)
 
 input = args[1]
 data = read.csv(input)
-output = args[2]
 make_vs(data)

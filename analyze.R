@@ -101,7 +101,7 @@ invisible(dev.off())
 model = lm(actprices~bsprices+mcprices)
 summary_text = capture.output(summary(model)$coefficients, summary(model)$r.squared)
 
-cat('Linear Model Estimating Actprices using BSprices and MC prices Coefficients: \n')
+cat('Coefficients of Linear Model Estimating Actprices using BS prices and MC prices: \n')
 print(summary(model)$coefficients)
 
 
