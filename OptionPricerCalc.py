@@ -351,7 +351,12 @@ def main():
                 analyzemode = st.radio('Select the type of option you want analyzed', optiontype, index = None, key = 'analyzemode')
                 if analyzemode:
                     st.write('')
-                    dataacquired = True
+                    if analyzemode == 'Calls' and len(calls)<20:
+                        st.write('There are too few data points, try another ticker')
+                    elif analyzemode == 'Puts' and len(puts)<20:
+                        st.write('There are too few data points, try another ticker')
+                    else:
+                        dataacquired = True
 
 
 
