@@ -284,7 +284,7 @@ def main():
         st.session_state['mode'] = 'analyze'
 
     if st.session_state['mode'] == 'write':
-        st.write('Please wait until the text "All options added" is shown before switching to Read Data or Analyze Full')
+        st.write('Please wait until the text "All options added" is shown before switching to Read or Analyze Data')
         ticker = st.text_input('Ticker (if no dates are showing up, check your spelling): ')
         if ticker:
             expiryoptions = getpossibleexpiry(ticker)
