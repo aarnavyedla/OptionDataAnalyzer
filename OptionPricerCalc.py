@@ -63,19 +63,19 @@ def MonteCarloCall(s, x, r, t, v, n, m, plotshow):
         for i in range(stp.shape[0]):
             plt.plot(j, stp[i])
 
-        return [call, se, plt]
+        return [removecomma(call), se, plt]
 
 
 
 
-    return [call, se]
+    return [removecomma(call), se]
 
 def MonteCarloPut(s,x,r,t,v,n,m):
     call = float(MonteCarloCall(s,x,r,t,v,n,m,False)[0])
     pvstrike = x*np.exp(-r*t)
     put = call+pvstrike-s
 
-    return '{:20,.2f}'.format(put).strip()
+    return removecomma('{:20,.2f}'.format(put).strip())
 
 def putfromcall(call, s, x, r, t):
     pvstrike = x*np.exp(-r*t)
@@ -84,6 +84,9 @@ def putfromcall(call, s, x, r, t):
 
 def getpossibleexpiry(ticker):
     return list(yf.Ticker(ticker).options)
+
+def removecomma(str):
+    return str.replace(',','')
 
 def writeoptionprice(stockticker, date):
     conn = init_connection()
