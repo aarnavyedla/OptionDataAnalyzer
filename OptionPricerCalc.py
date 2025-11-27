@@ -237,7 +237,7 @@ def reducewhitespace():
     )
 
 def main():
-
+    st.cache_data.clear()
     st.set_page_config(layout='wide', page_title='Option Data Analyzer')
     st.title('Option Data Analyzer')
     warnings.filterwarnings('ignore', category=UserWarning)
